@@ -42,7 +42,7 @@ pipelines:
         inputResources:
           - name: build_info_docker2
         outputResources:
-          - name: promoted_docker_build_info_docker_publish2
+          - name: promoted_docker2
 
     - name: CreateReleaseBundle
       type: Bash
@@ -50,7 +50,7 @@ pipelines:
         integrations:
           - name: ArtifactoryCredential
         inputResources:
-          - name: promoted_docker_build_info_docker_publish2
+          - name: promoted_docker2
         environmentVariables:
           BundleVersion: "v${run_number}.0"
           BundleName: "pipelines-production-buldle"
