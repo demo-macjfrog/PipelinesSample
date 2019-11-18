@@ -1,0 +1,96 @@
+pipelines:
+  - name: PipelinesSample
+    steps:
+    - name: docker_build
+      type: DockerBuild
+      configuration:
+        affinityGroup: docker_afgroup             # Execute build and push on the same node
+        dockerFileLocation: .
+        dockerFileName: Dockerfile
+        dockerImageName: docker.artifactory/pipelines-sample
+        dockerImageTag: $run_number
+        inputResources:
+          - name: repo_docker2
+        integrations:
+          - name: Artifactory1
+
+    - name: docker_push
+      type: DockerPush
+      configuration:
+        affinityGroup: docker_afgroup             # Execute build and push on the same node
+        targetRepository: docker-local
+        integrations:
+          - name: Artifactory1
+        inputSteps:
+          - name: docker_build
+ 
+    - name: publish_build_info
+      type: PublishBuildInfo
+      configuration:
+        inputSteps:
+          - name: docker_push
+        outputResources:
+          - name: build_info_docker2
+
+    - name: promote_build
+      type: PromoteBuild
+      configuration:
+        targetRepository: itswproduction
+        copy: true
+        integrations:
+          - name: Artifactory1
+        inputResources:
+          - name: build_info_docker2
+        outputResources:
+          - name: promoted_docker_build_info_docker_publish2
+
+    - name: CreateReleaseBundle
+      type: Bash
+      configuration:
+        integrations:
+          - name: ArtifactoryCredential
+        inputResources:
+          - name: promoted_docker_build_info_docker_publish2
+        environmentVariables:
+          BundleVersion: "v${run_number}.0"
+          BundleName: "pipelines-production-buldle"
+          TargetName: "test_20191118"
+          DryRun: "false"
+          Sign: "true"
+          DockerRepository: "itswproduction"
+          BuildName: "PipelinesSample"
+          BuildNumber: $run_number
+          endpoint1: "https://gist.githubusercontent.com/itsw1688/c92bedc2478a05685373b4734498127f/raw/6f978bdc681d0752b34ae7cdc8f388e2e30363ef/CreateReleaseBundle.json"
+          endpoint2: "http://192.168.0.48:8080/api/v1/release_bundle"
+          addheader1: "Content-Type:application/json"
+          addheader2: "X-GPG-PASSPHRASE:${int_ArtifactoryCredential_GPGPassPhrase}"
+      execution:
+        onExecute:
+          - curl -sS $endpoint1 | sh
+          - cat test.json
+          - curl -s -XPOST -u $int_ArtifactoryCredential_UserId:$int_ArtifactoryCredential_Password -H "$addheader1" -H "$addheader2" "$endpoint2" -T test.json
+        onSuccess:
+          - echo "SUCCESS"
+
+    - name: DistributionBundle
+      type: Bash
+      configuration:
+        inputSteps:
+          - name: CreateReleaseBundle
+        integrations:
+          - name: ArtifactoryCredential
+        environmentVariables:
+          BundleName: "pipelines-production-buldle"
+          BundleVersion: "v${run_number}.0"
+          DryRun: "false"
+          endpoint1: "https://gist.githubusercontent.com/itsw1688/5b0ac8a84ccc048b2c481ed63aa80b84/raw/99d3f9f1d836ed09812dc07d31d457aa7d70f3a0/DistributionBundle.json"
+          endpoint2: "http://192.168.0.48:8080/api/v1/distribution/${BundleName}/${BundleVersion}"
+          addheader1: "Content-Type:application/json"
+      execution:
+        onExecute:
+          - curl -sS $endpoint1 | sh
+          - cat test.json
+          - curl -s -XPOST -u $int_ArtifactoryCredential_UserId:$int_ArtifactoryCredential_Password -H "$addheader1" "$endpoint2" -T test.json
+        onSuccess:
+          - echo "SUCCESS"
+

@@ -1,0 +1,23 @@
+resources:
+  - name: repo_docker2
+    type: GitRepo
+    configuration:
+      gitProvider: PipelineExampleDockerBuild
+      path: demo-macjfrog/PipelinesSample
+      branches:
+        include: master
+ 
+  - name: build_info_docker2
+    type: BuildInfo
+    configuration:
+      sourceArtifactory: Artifactory1
+      buildName: svc_build
+      buildNumber: 1
+
+  - name: promoted_docker2
+    type: BuildInfo
+    configuration:
+      sourceArtifactory: Artifactory1
+      buildName: promoted_docker_build_publish2
+      buildNumber: 1
+
